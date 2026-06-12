@@ -1,0 +1,12 @@
+node_modules
+dist
+.turbo
+.DS_Store
+coverage
+.env
+.env.local
+.env.*.local
+apps/api/prisma/migrations
+apps/api/generated
+apps/web/.vite
+*.log

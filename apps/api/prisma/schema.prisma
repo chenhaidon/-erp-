@@ -1,0 +1,576 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DataScope {
+  TENANT
+  ORGANIZATION
+  FACTORY
+  DEPARTMENT
+  SELF
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MaterialType {
+  FINISHED
+  SEMI_FINISHED
+  RAW
+  CONSUMABLE
+}
+
+enum ProductionOrderStatus {
+  DRAFT
+  RELEASED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CLOSED
+}
+
+enum OperationReportType {
+  START
+  PAUSE
+  COMPLETE
+  SCRAP
+  REWORK
+  RECEIPT_CONFIRM
+}
+
+enum InventoryTransactionType {
+  RECEIPT
+  ISSUE
+  TRANSFER
+  COUNT
+  ADJUSTMENT
+  RETURN
+  SUPPLEMENT
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  SENT
+  PARTIAL_RECEIVED
+  RECEIVED
+}
+
+enum InspectionType {
+  IQC
+  IPQC
+  FQC
+}
+
+enum InspectionStatus {
+  PENDING
+  PASS
+  FAIL
+}
+
+enum EquipmentStatus {
+  RUNNING
+  IDLE
+  STOPPED
+  MAINTENANCE
+}
+
+enum IntegrationSystem {
+  MES
+  WMS
+  QMS
+  EAM
+  SRM
+}
+
+enum IntegrationJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum AiInteractionType {
+  ASK_SCHEDULE
+  ROOT_CAUSE
+  SUMMARY
+}
+
+model Tenant {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  name          String
+  organizations Organization[]
+  users         User[]
+  roles         Role[]
+  factories     Factory[]
+  departments   Department[]
+  materials     Material[]
+  warehouses    Warehouse[]
+  suppliers     Supplier[]
+  customers     Customer[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Organization {
+  id         String      @id @default(cuid())
+  tenantId   String
+  code       String
+  name       String
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  factories  Factory[]
+  departments Department[]
+  users      User[]
+  @@unique([tenantId, code])
+}
+
+model Factory {
+  id              String       @id @default(cuid())
+  tenantId       String
+  organizationId String
+  code           String
+  name           String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  users          UserFactoryScope[]
+  defaultUsers   User[]
+  warehouses     Warehouse[]
+  materials      Material[]
+  workCenters    WorkCenter[]
+  productionOrders ProductionOrder[]
+  mrpRuns        MrpRun[]
+  integrationJobs IntegrationJob[]
+  aiInteractions AiInteraction[]
+  @@unique([tenantId, code])
+}
+
+model Department {
+  id             String      @id @default(cuid())
+  tenantId       String
+  organizationId String
+  code           String
+  name           String
+  tenant         Tenant      @relation(fields: [tenantId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  users          User[]
+  @@unique([tenantId, code])
+}
+
+model User {
+  id               String             @id @default(cuid())
+  tenantId         String
+  organizationId   String
+  departmentId     String?
+  username         String
+  passwordHash     String
+  displayName      String
+  status           UserStatus         @default(ACTIVE)
+  defaultFactoryId String?
+  tenant           Tenant             @relation(fields: [tenantId], references: [id])
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  department       Department?        @relation(fields: [departmentId], references: [id])
+  defaultFactory   Factory?           @relation(fields: [defaultFactoryId], references: [id])
+  roleAssignments  UserRole[]
+  factoryScopes    UserFactoryScope[]
+  auditLogs        AuditLog[]
+  refreshTokens    RefreshToken[]
+  @@unique([tenantId, username])
+}
+
+model Role {
+  id         String       @id @default(cuid())
+  tenantId   String
+  code       String
+  name       String
+  dataScope  DataScope
+  tenant     Tenant       @relation(fields: [tenantId], references: [id])
+  permissions Permission[]
+  users      UserRole[]
+  @@unique([tenantId, code])
+}
+
+model Permission {
+  id       String   @id @default(cuid())
+  roleId   String
+  code     String
+  name     String
+  role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([userId, roleId])
+}
+
+model UserFactoryScope {
+  userId    String
+  factoryId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  factory   Factory @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  @@id([userId, factoryId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id           String       @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  code         String
+  name         String
+  specification String
+  type         MaterialType
+  unit         String
+  safetyStock  Float        @default(0)
+  leadTimeDays Int          @default(0)
+  unitCost     Float        @default(0)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  factory      Factory      @relation(fields: [factoryId], references: [id])
+  bomHeaders   BomHeader[]
+  inventoryBalances InventoryBalance[]
+  bomComponents BomItem[]   @relation("BomComponent")
+  bomSubstitutes BomItem[]  @relation("BomSubstitute")
+  routingHeaders RoutingHeader[]
+  salesOrders   SalesOrder[]
+  productionOrders ProductionOrder[]
+  purchaseOrders PurchaseOrder[]
+  inspections   Inspection[]
+  inventoryTransactions InventoryTransaction[]
+  @@unique([tenantId, factoryId, code])
+}
+
+model BomHeader {
+  id           String    @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  code         String
+  materialId   String
+  version      String
+  status       String
+  effectiveFrom DateTime
+  effectiveTo  DateTime?
+  material     Material  @relation(fields: [materialId], references: [id])
+  items        BomItem[]
+  @@unique([tenantId, factoryId, code, version])
+}
+
+model BomItem {
+  id                   String  @id @default(cuid())
+  bomHeaderId          String
+  componentMaterialId  String
+  quantity             Float
+  lossRate             Float   @default(0)
+  substituteMaterialId String?
+  bomHeader            BomHeader @relation(fields: [bomHeaderId], references: [id], onDelete: Cascade)
+  componentMaterial    Material  @relation("BomComponent", fields: [componentMaterialId], references: [id])
+  substituteMaterial   Material? @relation("BomSubstitute", fields: [substituteMaterialId], references: [id])
+}
+
+model WorkCenter {
+  id        String     @id @default(cuid())
+  tenantId  String
+  factoryId String
+  code      String
+  name      String
+  hourlyRate Float     @default(0)
+  factory   Factory    @relation(fields: [factoryId], references: [id])
+  equipments Equipment[]
+  routings  RoutingOperation[]
+  @@unique([tenantId, factoryId, code])
+}
+
+model RoutingHeader {
+  id         String             @id @default(cuid())
+  tenantId   String
+  factoryId  String
+  code       String
+  materialId String
+  version    String
+  status     String
+  material   Material           @relation(fields: [materialId], references: [id])
+  operations RoutingOperation[]
+  productionOrders ProductionOrder[]
+  @@unique([tenantId, factoryId, code, version])
+}
+
+model RoutingOperation {
+  id              String       @id @default(cuid())
+  routingHeaderId String
+  sequence        Int
+  operationCode   String
+  operationName   String
+  workCenterId    String
+  standardMinutes Float
+  routingHeader   RoutingHeader @relation(fields: [routingHeaderId], references: [id], onDelete: Cascade)
+  workCenter      WorkCenter    @relation(fields: [workCenterId], references: [id])
+  operationReports OperationReport[]
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  @@unique([tenantId, code])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  salesOrders SalesOrder[]
+  @@unique([tenantId, code])
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  tenantId  String
+  factoryId String
+  code      String
+  name      String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  factory   Factory  @relation(fields: [factoryId], references: [id])
+  balances  InventoryBalance[]
+  transactions InventoryTransaction[]
+  @@unique([tenantId, factoryId, code])
+}
+
+model InventoryBalance {
+  id           String   @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  warehouseId  String
+  materialId   String
+  onHandQty    Float    @default(0)
+  reservedQty  Float    @default(0)
+  inTransitQty Float    @default(0)
+  warehouse    Warehouse @relation(fields: [warehouseId], references: [id])
+  material     Material  @relation(fields: [materialId], references: [id])
+  @@unique([tenantId, factoryId, warehouseId, materialId])
+}
+
+model SalesOrder {
+  id         String   @id @default(cuid())
+  tenantId   String
+  factoryId  String
+  orderNo    String
+  customerId String
+  dueDate    DateTime
+  demandQty  Float
+  productId  String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  product    Material @relation(fields: [productId], references: [id])
+  @@unique([tenantId, factoryId, orderNo])
+}
+
+model ProductionOrder {
+  id               String                @id @default(cuid())
+  tenantId         String
+  factoryId        String
+  orderNo          String
+  productId        String
+  routingHeaderId  String?
+  quantity         Float
+  plannedStartDate DateTime
+  plannedEndDate   DateTime
+  status           ProductionOrderStatus @default(DRAFT)
+  progress         Float                 @default(0)
+  priority         Int                   @default(3)
+  product          Material              @relation(fields: [productId], references: [id])
+  factory          Factory               @relation(fields: [factoryId], references: [id])
+  routingHeader    RoutingHeader?        @relation(fields: [routingHeaderId], references: [id])
+  operationReports OperationReport[]
+  costs            ProductionCost?
+  @@unique([tenantId, factoryId, orderNo])
+}
+
+model OperationReport {
+  id                String              @id @default(cuid())
+  tenantId          String
+  factoryId         String
+  productionOrderId String
+  routingOperationId String?
+  reportType        OperationReportType
+  reportedQty       Float               @default(0)
+  scrapQty          Float               @default(0)
+  operatorName      String
+  reportTime        DateTime            @default(now())
+  productionOrder   ProductionOrder     @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  routingOperation  RoutingOperation?   @relation(fields: [routingOperationId], references: [id])
+}
+
+model MrpRun {
+  id          String   @id @default(cuid())
+  tenantId    String
+  factoryId   String
+  runNo       String   @unique
+  status      String
+  summary     Json
+  createdAt   DateTime @default(now())
+  factory     Factory  @relation(fields: [factoryId], references: [id])
+}
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  tenantId       String
+  factoryId      String
+  orderNo        String
+  supplierId     String
+  materialId     String
+  quantity       Float
+  unitPrice      Float               @default(0)
+  totalAmount    Float               @default(0)
+  dueDate        DateTime
+  status         PurchaseOrderStatus @default(DRAFT)
+  submittedAt    DateTime?
+  submittedBy    String?
+  approvedAt     DateTime?
+  approvedBy     String?
+  rejectedAt     DateTime?
+  rejectedBy     String?
+  approvalRemark String?
+  supplier       Supplier            @relation(fields: [supplierId], references: [id])
+  material       Material            @relation(fields: [materialId], references: [id])
+  @@unique([tenantId, factoryId, orderNo])
+}
+
+model InventoryTransaction {
+  id              String                   @id @default(cuid())
+  tenantId        String
+  factoryId       String
+  warehouseId     String
+  materialId      String
+  transactionType InventoryTransactionType
+  quantity        Float
+  transactionTime DateTime                 @default(now())
+  warehouse       Warehouse                @relation(fields: [warehouseId], references: [id])
+  material        Material                 @relation(fields: [materialId], references: [id])
+}
+
+model Inspection {
+  id           String           @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  inspectionNo String
+  type         InspectionType
+  sourceNo     String
+  materialId   String
+  status       InspectionStatus @default(PENDING)
+  inspector    String
+  material     Material         @relation(fields: [materialId], references: [id])
+  @@unique([tenantId, factoryId, inspectionNo])
+}
+
+model Equipment {
+  id           String          @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  code         String
+  name         String
+  workCenterId String
+  healthScore  Float
+  oee          Float
+  status       EquipmentStatus
+  workCenter   WorkCenter      @relation(fields: [workCenterId], references: [id])
+  maintenanceOrders MaintenanceOrder[]
+  @@unique([tenantId, factoryId, code])
+}
+
+model MaintenanceOrder {
+  id           String   @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  orderNo      String
+  equipmentId  String
+  description  String
+  status       String
+  createdAt    DateTime @default(now())
+  equipment    Equipment @relation(fields: [equipmentId], references: [id])
+  @@unique([tenantId, factoryId, orderNo])
+}
+
+model IntegrationJob {
+  id          String               @id @default(cuid())
+  tenantId    String
+  factoryId   String
+  system      IntegrationSystem
+  direction   String
+  status      IntegrationJobStatus
+  message     String
+  payload     Json
+  triggeredAt DateTime             @default(now())
+  factory     Factory              @relation(fields: [factoryId], references: [id])
+}
+
+model IntegrationMapping {
+  id         String   @id @default(cuid())
+  tenantId   String
+  system     IntegrationSystem
+  entityName String
+  fieldName  String
+  sourceField String
+}
+
+model AiInteraction {
+  id          String            @id @default(cuid())
+  tenantId    String
+  factoryId   String
+  type        AiInteractionType
+  prompt      String
+  result      String
+  evidence    Json
+  adopted     Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  factory     Factory           @relation(fields: [factoryId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  detail     Json
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+}
+
+model ProductionCost {
+  id                String          @id @default(cuid())
+  tenantId          String
+  factoryId         String
+  productionOrderId String          @unique
+  materialCost      Float           @default(0)
+  laborCost         Float           @default(0)
+  overheadCost      Float           @default(0)
+  totalCost         Float           @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+}
