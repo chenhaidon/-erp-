@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npm --workspace @smart-erp/api run prisma:generate
+
       - name: Lint workspaces
         run: npm run lint
 
