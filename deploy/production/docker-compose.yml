@@ -46,7 +46,7 @@ services:
       context: ../..
       dockerfile: apps/api/Dockerfile
       args:
-        NODE_IMAGE: docker.m.daocloud.io/library/node:22-alpine
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
     container_name: smart-erp-api
     restart: unless-stopped
     depends_on:
@@ -64,15 +64,15 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-http://your-domain-or-ip}
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       NODE_ENV: production
-    command: sh -c "npx prisma db push --schema apps/api/prisma/schema.prisma && node dist/main.js"
+    command: sh -c "npx prisma db push --schema apps/api/prisma/schema.prisma && node apps/api/dist/src/main.js"
 
   web:
     build:
       context: ../..
       dockerfile: apps/web/Dockerfile.prod
       args:
-        NODE_IMAGE: docker.m.daocloud.io/library/node:22-alpine
-        NGINX_IMAGE: docker.m.daocloud.io/library/nginx:1.27-alpine
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
         VITE_API_BASE_URL: /api
     container_name: smart-erp-web
     restart: unless-stopped

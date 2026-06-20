@@ -49,8 +49,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          cd "$DEPLOY_PATH"
-          docker compose --env-file env/production/.env -f deploy/production/docker-compose.yml up -d --build
+          cd "$DEPLOY_PATH/deploy/production"
+          docker compose --env-file ../../env/production/.env -f docker-compose.yml up -d --build
 
       - name: Health check web
         shell: bash
