@@ -1,4 +1,4 @@
-import { Button, Card, Col, Form, Input, Modal, Popconfirm, Row, Select, Space, Table } from "antd";
+import { Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../lib/api";
@@ -39,9 +39,14 @@ export function MasterDataPage() {
   function openSup(record?: Supplier) { setSupModal({ open: true, record }); supForm.setFieldsValue(record ?? {}); }
   function openWh(record?: Warehouse) { setWhModal({ open: true, record }); whForm.setFieldsValue(record ?? {}); }
 
-  async function submitMat(values: object) {
-    if (matModal.record) await materials.update.mutateAsync({ id: matModal.record.id, ...values });
-    else await materials.create.mutateAsync(values);
+  async function submitMat(values: Record<string, unknown>) {
+    const payload = {
+      ...values,
+      safetyStock: Number(values.safetyStock),
+      leadTimeDays: Number(values.leadTimeDays)
+    };
+    if (matModal.record) await materials.update.mutateAsync({ id: matModal.record.id, ...payload });
+    else await materials.create.mutateAsync(payload);
     setMatModal({ open: false }); matForm.resetFields();
   }
   async function submitSup(values: object) {
@@ -133,8 +138,8 @@ export function MasterDataPage() {
           <Form.Item name="specification" label="规格"><Input /></Form.Item>
           <Form.Item name="type" label="类型" rules={[{ required: true }]}><Select options={MATERIAL_TYPES} /></Form.Item>
           <Form.Item name="unit" label="单位" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="safetyStock" label="安全库存" rules={[{ required: true }]}><Input type="number" /></Form.Item>
-          <Form.Item name="leadTimeDays" label="提前期(天)" rules={[{ required: true }]}><Input type="number" /></Form.Item>
+          <Form.Item name="safetyStock" label="安全库存" rules={[{ required: true }]}><InputNumber min={0} precision={0} style={{ width: "100%" }} /></Form.Item>
+          <Form.Item name="leadTimeDays" label="提前期(天)" rules={[{ required: true }]}><InputNumber min={0} precision={0} style={{ width: "100%" }} /></Form.Item>
         </Form>
       </Modal>
 

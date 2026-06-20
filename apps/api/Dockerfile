@@ -1,13 +1,15 @@
-FROM node:22-alpine
+ARG NODE_IMAGE=node:22-alpine
+FROM ${NODE_IMAGE}
 
 WORKDIR /app
 
 COPY package.json ./
+COPY package-lock.json ./
 COPY tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
 
-RUN npm install
+RUN npm ci
 
 COPY apps/api ./apps/api
 COPY packages/shared ./packages/shared
