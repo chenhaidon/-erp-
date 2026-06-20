@@ -34,6 +34,13 @@ jobs:
           test -f "$DEPLOY_PATH/env/production/.env"
           docker info >/dev/null
 
+      - name: Mark deploy path as safe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config --global --add safe.directory "$DEPLOY_PATH"
+
       - name: Sync production branch
         shell: bash
         run: |
