@@ -19,6 +19,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux
+      - prod-deploy
     timeout-minutes: 30
     env:
       DEPLOY_PATH: /opt/smart-erp
