@@ -52,10 +52,12 @@ This avoids losing production-only fixes in later releases.
   - Local development
   - Integration testing
   - Pre-release verification
+  - GitHub Actions runs CI only
 
 - `production`
   - Server deployment
   - Production configuration
+  - GitHub Actions deploys after PR merge only
 
 ## Guardrails
 
@@ -63,3 +65,4 @@ This avoids losing production-only fixes in later releases.
 - Keep local-only tooling and generated files in `.gitignore`.
 - Do not do feature development directly on `production`.
 - Keep deployment and environment changes validated on `develop` before promoting.
+- Protect `production` in GitHub and block direct pushes.

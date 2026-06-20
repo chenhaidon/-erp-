@@ -1,0 +1,103 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy On Linux Runner
+    runs-on:
+      - self-hosted
+      - linux
+      - prod-deploy
+    timeout-minutes: 30
+    env:
+      DEPLOY_PATH: /opt/smart-erp
+
+    steps:
+      - name: Verify server prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -d "$DEPLOY_PATH/.git"
+          test -f "$DEPLOY_PATH/env/production/.env"
+          docker info >/dev/null
+
+      - name: Mark deploy path as safe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config --global --add safe.directory "$DEPLOY_PATH"
+
+      - name: Sync production branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$DEPLOY_PATH"
+          git fetch --all --prune
+          git checkout production
+          git reset --hard origin/production
+
+      - name: Deploy containers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$DEPLOY_PATH/deploy/production"
+          docker compose --env-file ../../env/production/.env -f docker-compose.yml up -d --build
+
+      - name: Health check web
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          web_port="$(grep '^WEB_PORT=' "$DEPLOY_PATH/env/production/.env" | cut -d= -f2)"
+          if [ -z "${web_port:-}" ]; then
+            web_port="80"
+          fi
+
+          for _ in $(seq 1 24); do
+            if curl -fsS "http://127.0.0.1:${web_port}/" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Web health check failed"
+          exit 1
+
+      - name: Health check api auth guard
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          web_port="$(grep '^WEB_PORT=' "$DEPLOY_PATH/env/production/.env" | cut -d= -f2)"
+          if [ -z "${web_port:-}" ]; then
+            web_port="80"
+          fi
+
+          for _ in $(seq 1 24); do
+            status_code="$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:${web_port}/api/auth/me" || true)"
+
+            if [ "$status_code" = "401" ]; then
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "Expected /api/auth/me to return 401, got ${status_code:-unknown}"
+          exit 1
