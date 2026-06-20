@@ -21,7 +21,15 @@ import { CostsModule } from "./costs/costs.module.js";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        `.env.${process.env.NODE_ENV}.local`,
+        `.env.${process.env.NODE_ENV}`,
+        ".env.local",
+        ".env"
+      ]
+    }),
     JwtModule.register({ global: true }),
     BullModule.forRootAsync({
       inject: [ConfigService],

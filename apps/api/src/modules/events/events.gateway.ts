@@ -1,10 +1,10 @@
-import { OnGatewayConnection, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
+import { OnGatewayConnection, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import type { Server, Socket } from "socket.io";
 
-@WebSocketGateway({ cors: true, namespace: "/events" })
-export class EventsGateway implements OnGatewayConnection {
+@WebSocketGateway({ namespace: "/events" })
+export class EventsGateway implements OnGatewayConnection, OnGatewayInit {
   @WebSocketServer()
   private server!: Server;
 
@@ -12,6 +12,13 @@ export class EventsGateway implements OnGatewayConnection {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService
   ) {}
+
+  afterInit(server: Server) {
+    const webOrigin = this.configService.get<string>("WEB_ORIGIN");
+    server.engine.opts.cors = {
+      origin: webOrigin ? webOrigin.split(",").map((origin) => origin.trim()) : true
+    };
+  }
 
   handleConnection(client: Socket) {
     // Authentication is handled via the 'authenticate' message
