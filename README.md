@@ -2,39 +2,26 @@
 
 面向离散制造场景的 Web 端智能制造 ERP 全栈工程，采用 `React + NestJS + PostgreSQL + Redis + MinIO`。
 
-## 开发 / 生产隔离策略
+## 开发 / 生产隔离结构
 
-当前仓库采用“同一套业务代码，不同环境配置与启动入口分离”的方式，不维护两套代码。
+仓库现在按“代码、环境、部署”三层隔离：
 
-### 开发环境
+- 代码：
+  - `apps/web`
+  - `apps/api`
+  - `packages/shared`
+- 环境模板：
+  - `env/development/.env.example`
+  - `env/production/.env.example`
+  - `apps/api/.env.development.example`
+  - `apps/api/.env.production.example`
+  - `apps/web/.env.development.example`
+  - `apps/web/.env.production.example`
+- 部署编排：
+  - `deploy/development/docker-compose.yml`
+  - `deploy/production/docker-compose.yml`
 
-- 编排文件：`docker-compose.yml`
-- API 环境模板：`apps/api/.env.development.example`
-- Web 环境模板：`apps/web/.env.development.example`
-- 典型用途：本地联调、功能开发、演示数据测试
-
-### 生产环境
-
-- 编排文件：`docker-compose.prod.yml`
-- 根环境模板：`.env.production.example`
-- API 环境模板：`apps/api/.env.production.example`
-- Web 环境模板：`apps/web/.env.production.example`
-- 典型用途：云服务器部署、Nginx 反向代理、容器运行
-
-### API 环境变量加载顺序
-
-`apps/api` 会按以下顺序加载配置：
-
-1. `.env.<NODE_ENV>.local`
-2. `.env.<NODE_ENV>`
-3. `.env.local`
-4. `.env`
-
-这意味着：
-
-- 开发环境建议使用 `NODE_ENV=development`
-- 生产环境建议使用 `NODE_ENV=production`
-- 本地临时覆盖建议放在 `*.local`
+根目录只保留入口和说明，不再混放生产环境模板。
 
 ## 常用命令
 
@@ -45,25 +32,25 @@
 3. 初始化数据库：
    - `npm run dev:db:push`
    - `npm run dev:seed`
-4. 启动应用：
-   - API：`npm run dev:api`
-   - Web：`npm run dev:web`
+4. 启动服务：
+   - `npm run dev:api`
+   - `npm run dev:web`
 
 ### 生产环境
 
-1. 复制模板：`Copy-Item .env.production.example .env.production`
-2. 修改生产变量：数据库密码、JWT 密钥、域名、MinIO 密码
+1. 复制模板：`Copy-Item env/production/.env.example env/production/.env`
+2. 修改生产变量
 3. 启动：`npm run prod:up`
 4. 查看日志：`npm run prod:logs`
 5. 停止：`npm run prod:down`
 
-## 目录结构
+## 分支建议
 
-- `apps/web`：React 前端控制台
-- `apps/api`：NestJS 后端 API
-- `packages/shared`：共享类型、枚举、导航常量
-- `docker-compose.yml`：开发环境依赖编排
-- `docker-compose.prod.yml`：生产环境编排
+- `develop`：开发集成分支
+- `production`：生产发布分支
+- `main`：基线分支
+
+详细规则见：[BRANCHING.md](BRANCHING.md)
 
 ## 默认账号
 

@@ -9,14 +9,14 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "dev": "npm run dev --workspaces --if-present",
-    "dev:infra": "docker compose up -d postgres redis minio",
+    "dev:infra": "docker compose -f deploy/development/docker-compose.yml up -d postgres redis minio",
     "dev:db:push": "npm --workspace @smart-erp/api run prisma:migrate",
     "dev:seed": "npm --workspace @smart-erp/api run prisma:seed",
     "dev:api": "npm --workspace @smart-erp/api run dev",
     "dev:web": "npm --workspace @smart-erp/web run dev",
-    "prod:up": "docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build",
-    "prod:down": "docker compose --env-file .env.production -f docker-compose.prod.yml down",
-    "prod:logs": "docker compose --env-file .env.production -f docker-compose.prod.yml logs -f",
+    "prod:up": "docker compose --env-file env/production/.env -f deploy/production/docker-compose.yml up -d --build",
+    "prod:down": "docker compose --env-file env/production/.env -f deploy/production/docker-compose.yml down",
+    "prod:logs": "docker compose --env-file env/production/.env -f deploy/production/docker-compose.yml logs -f",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "format": "npm run format --workspaces --if-present"

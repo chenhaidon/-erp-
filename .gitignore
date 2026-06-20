@@ -8,6 +8,8 @@ coverage
 .env.*.local
 .env.development
 .env.production
+env/**/.env
+env/**/.env.local
 apps/api/.env.development
 apps/api/.env.production
 apps/web/.env.development
