@@ -15,9 +15,14 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayInit {
 
   afterInit(server: Server) {
     const webOrigin = this.configService.get<string>("WEB_ORIGIN");
-    server.engine.opts.cors = {
-      origin: webOrigin ? webOrigin.split(",").map((origin) => origin.trim()) : true
-    };
+    const origins = webOrigin ? webOrigin.split(",").map((origin) => origin.trim()) : true;
+    const engine = (server as Server & { engine?: { opts?: { cors?: { origin: true | string[] } } } }).engine;
+
+    if (engine?.opts) {
+      engine.opts.cors = {
+        origin: origins
+      };
+    }
   }
 
   handleConnection(client: Socket) {
