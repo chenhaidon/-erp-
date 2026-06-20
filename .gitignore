@@ -6,8 +6,17 @@ coverage
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+env/**/.env
+env/**/.env.local
+apps/api/.env.development
+apps/api/.env.production
+apps/web/.env.development
+apps/web/.env.production
 apps/api/prisma/migrations
 apps/api/generated
 apps/web/.vite
+.walicode/
 *.tsbuildinfo
 *.log
